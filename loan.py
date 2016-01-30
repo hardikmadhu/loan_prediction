@@ -12,6 +12,13 @@ trainDict = {}
 
 counter = 0
 
+def getF(conf_mat):
+	precision = conf_mat[1][1]*1.0/(conf_mat[1][1] + conf_mat[0][1])
+	recall = conf_mat[1][1] * 1.0/sum(conf_mat[1]) 
+	f = (recall * precision)/ (recall+precision)
+	return f
+
+
 for row in trainData:
 
 	skip = False
@@ -152,13 +159,14 @@ trainX = np.array(trainX)
 trainY = np.array(trainY)
 
 cList = [10]
-for i in range(100):
+for i in range(200):
 	cList.append(cList[-1]+10)
 
 gammaList = list(np.arange(0.01,0.1,0.01))
+gammaList.extend(np.arange(0.1,0.5,0.1))
 
-cList = [760]
-gammaList = [0.04]
+cList = [90]
+gammaList = [0.2]
 
 trainErrorList = []
 testErrorList = []
@@ -179,10 +187,10 @@ for c in cList:
 	sens_1 = 1 - ((conf_mat[1][1] * 1.0)/sum(conf_mat[1]))
 
 	avgSens = (sens_0 + sens_1)/2.0
+	f = getF(conf_mat)
+	#print c,'\t',g,'\t',avgSens
 
-#	print c,'\t',g,'\t',avgSens, i
-
-	testErrorList.append(avgSens)
+	testErrorList.append(f)
 	mList.append(i)
 
 	predictY = clf.predict(trainX[0:i])
@@ -193,7 +201,8 @@ for c in cList:
 	sens_1 = 1 - ((conf_mat[1][1] * 1.0)/sum(conf_mat[1]))
 
 	avgSens = (sens_0 + sens_1)/2.0
-	trainErrorList.append(avgSens)
+	f = getF(conf_mat)
+	trainErrorList.append(f)
 
 win = pg.GraphicsWindow()
 pl1 = win.addPlot()
