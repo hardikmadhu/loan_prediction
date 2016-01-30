@@ -4,7 +4,7 @@ from sklearn.svm import SVC
 from sklearn.metrics import confusion_matrix
 import pyqtgraph as pg
 
-
+M_TRAIN = 500
 csvFile = open('train.csv')
 trainData = csv.reader(csvFile, delimiter = ',')
 
@@ -116,7 +116,6 @@ for row in trainData:
 	trainDict.update(tmpDict)
 
 print len(trainDict.keys())
-
 indexList = [2,5,6,7,8,9]
 
 for idx in indexList:
@@ -167,21 +166,21 @@ mList = []
 
 for c in cList:
   for g in gammaList:
-    for i in range(10,400):
+    for i in range(10,M_TRAIN):
 	clf = SVC(C=c,gamma = g,degree =3)
 
 	clf.fit(trainX[0:i],trainY[0:i])
 
-	predictY = clf.predict(trainX[400:])
+	predictY = clf.predict(trainX[M_TRAIN:])
 
-	conf_mat = confusion_matrix(trainY[400:], predictY, labels=[0,1])
+	conf_mat = confusion_matrix(trainY[M_TRAIN:], predictY, labels=[0,1])
 
-	sens_0 = (conf_mat[0][0] * 1.0)/sum(conf_mat[0])
-	sens_1 = (conf_mat[1][1] * 1.0)/sum(conf_mat[1])
+	sens_0 = 1 - ((conf_mat[0][0] * 1.0)/sum(conf_mat[0]))
+	sens_1 = 1 - ((conf_mat[1][1] * 1.0)/sum(conf_mat[1]))
 
-	avgSens = (2 - (sens_0 + sens_1))/2.0
+	avgSens = (sens_0 + sens_1)/2.0
 
-	print c,'\t',g,'\t',avgSens, i
+#	print c,'\t',g,'\t',avgSens, i
 
 	testErrorList.append(avgSens)
 	mList.append(i)
@@ -190,12 +189,16 @@ for c in cList:
 
 	conf_mat = confusion_matrix(trainY[0:i], predictY, labels=[0,1])
 
-	sens_0 = (conf_mat[0][0] * 1.0)/sum(conf_mat[0])
-	sens_1 = (conf_mat[1][1] * 1.0)/sum(conf_mat[1])
+	sens_0 = 1 - ((conf_mat[0][0] * 1.0)/sum(conf_mat[0]))
+	sens_1 = 1 - ((conf_mat[1][1] * 1.0)/sum(conf_mat[1]))
 
-	avgSens = (2 - (sens_0 + sens_1))/2.0
+	avgSens = (sens_0 + sens_1)/2.0
 	trainErrorList.append(avgSens)
 
-pg.plot(trainErrorList, color = 'r')
-pg.plot(testErrorList, color = 'y')
+win = pg.GraphicsWindow()
+pl1 = win.addPlot()
+pl1.plot(trainErrorList, pen = 'r')
+pl1.plot(testErrorList, pen = 'y')
+pl1.show()
 s = raw_input()
+print M_TRAIN,":",trainErrorList[-1], testErrorList[-1]
