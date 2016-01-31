@@ -5,12 +5,7 @@ from sklearn.metrics import confusion_matrix
 import pyqtgraph as pg
 
 M_TRAIN = 500
-csvFile = open('train.csv')
-trainData = csv.reader(csvFile, delimiter = ',')
 
-trainDict = {}
-
-counter = 0
 
 def getF(conf_mat):
 	precision = conf_mat[1][1]*1.0/(conf_mat[1][1] + conf_mat[0][1])
@@ -19,22 +14,14 @@ def getF(conf_mat):
 	return f
 
 
-for row in trainData:
+def getDict(trainData,training):
 
-	skip = False
+    counter = 0
+    trainDict = {}
+    for row in trainData:
 	if counter == 0:
 		counter = counter + 1
 		continue
-	'''
-	for r in row:
-		if len(r) == 0:
-			skip = True
-			break
-
-	if skip == True:
-		continue
-	'''
-	#print row
 
 	tmpDict = {}
 	tmpDict[row[0]] = []
@@ -113,19 +100,20 @@ for row in trainData:
 		tmpDict[row[0]].append(0.5)
 	   else:
 		tmpDict[row[0]].append(1)
-
-	if row[12] == 'Y':
+	
+	if training == 1:
+	   if row[12] == 'Y':
 		tmpDict[row[0]].append(1)
-	else:
+	   else:
 		tmpDict[row[0]].append(0)
 		
 
 	trainDict.update(tmpDict)
 
-print len(trainDict.keys())
-indexList = [2,5,6,7,8,9]
+    print len(trainDict.keys())
+    indexList = [2,5,6,7,8,9]
 
-for idx in indexList:
+    for idx in indexList:
 	tmpList = []
 	for lid in trainDict.keys():
 	   if trainDict[lid][idx] != -1:
@@ -146,68 +134,135 @@ for idx in indexList:
 		lid = trainDict.keys()[i]
 		trainDict[lid][idx] = tmpList[i]
 
-
-trainX = []
-trainY = []
-
-for lid in trainDict.keys():
-	trainX.append(trainDict[lid][0:11])
-	trainY.append(trainDict[lid][11])
+    return trainDict
 
 
-trainX = np.array(trainX)
-trainY = np.array(trainY)
 
-cList = [10]
-for i in range(200):
-	cList.append(cList[-1]+10)
+def train(trainDict):
+	trainX = []
+	trainY = []
 
-gammaList = list(np.arange(0.01,0.1,0.01))
-gammaList.extend(np.arange(0.1,0.5,0.1))
+	for lid in trainDict.keys():
+		trainX.append(trainDict[lid][0:11])
+		trainY.append(trainDict[lid][11])
 
-cList = [90]
-gammaList = [0.2]
 
-trainErrorList = []
-testErrorList = []
-mList = []
+	trainX = np.array(trainX)
+	trainY = np.array(trainY)
 
-for c in cList:
-  for g in gammaList:
-    for i in range(10,M_TRAIN):
-	clf = SVC(C=c,gamma = g,degree =3)
+	
+	cList = [10]
+	for i in range(200):
+		cList.append(cList[-1]+10)
 
-	clf.fit(trainX[0:i],trainY[0:i])
+	gammaList = list(np.arange(0.01,0.1,0.01))
+	gammaList.extend(np.arange(0.1,0.5,0.1))
+	
+	'''
+	cList = [90]
+	gammaList = [0.2]
+	'''
+	trainErrorList = []
+	testErrorList = []
+	mList = []
 
-	predictY = clf.predict(trainX[M_TRAIN:])
+	for c in cList:
+	  for g in gammaList:
+	    #for i in range(10,M_TRAIN):
+		i = M_TRAIN
+		clf = SVC(C = c, gamma = g, degree = 3)
 
-	conf_mat = confusion_matrix(trainY[M_TRAIN:], predictY, labels=[0,1])
+		clf.fit(trainX[0:i],trainY[0:i])
 
-	sens_0 = 1 - ((conf_mat[0][0] * 1.0)/sum(conf_mat[0]))
-	sens_1 = 1 - ((conf_mat[1][1] * 1.0)/sum(conf_mat[1]))
+		predictY = clf.predict(trainX[M_TRAIN:])
 
-	avgSens = (sens_0 + sens_1)/2.0
-	f = getF(conf_mat)
-	#print c,'\t',g,'\t',avgSens
+		conf_mat = confusion_matrix(trainY[M_TRAIN:], predictY, labels=[0,1])
+		sens_0 = 1 - ((conf_mat[0][0] * 1.0)/sum(conf_mat[0]))
+		sens_1 = 1 - ((conf_mat[1][1] * 1.0)/sum(conf_mat[1]))
+	
+		avgSens = (sens_0 + sens_1)/2.0
+		f = getF(conf_mat)
+		print c,'\t',g,'\t',avgSens
 
-	testErrorList.append(f)
-	mList.append(i)
+		testErrorList.append(avgSens)
+		mList.append(i)
 
-	predictY = clf.predict(trainX[0:i])
+		predictY = clf.predict(trainX[0:i])
 
-	conf_mat = confusion_matrix(trainY[0:i], predictY, labels=[0,1])
+		conf_mat = confusion_matrix(trainY[0:i], predictY, labels=[0,1])
 
-	sens_0 = 1 - ((conf_mat[0][0] * 1.0)/sum(conf_mat[0]))
-	sens_1 = 1 - ((conf_mat[1][1] * 1.0)/sum(conf_mat[1]))
+		sens_0 = 1 - ((conf_mat[0][0] * 1.0)/sum(conf_mat[0]))
+		sens_1 = 1 - ((conf_mat[1][1] * 1.0)/sum(conf_mat[1]))
 
-	avgSens = (sens_0 + sens_1)/2.0
-	f = getF(conf_mat)
-	trainErrorList.append(f)
+		avgSens = (sens_0 + sens_1)/2.0
+		f = getF(conf_mat)
+		trainErrorList.append(avgSens)
 
-win = pg.GraphicsWindow()
-pl1 = win.addPlot()
-pl1.plot(trainErrorList, pen = 'r')
-pl1.plot(testErrorList, pen = 'y')
-pl1.show()
-s = raw_input()
-print M_TRAIN,":",trainErrorList[-1], testErrorList[-1]
+	win = pg.GraphicsWindow()
+	pl1 = win.addPlot()
+	pl1.plot(trainErrorList, pen = 'r')
+	pl1.plot(testErrorList, pen = 'y')
+	pl1.show()
+	s = raw_input()
+	print M_TRAIN,":",trainErrorList[-1], testErrorList[-1]
+
+
+
+def test(testDict,trainDict):
+	trainX = []
+	trainY = []
+
+	for lid in trainDict.keys():
+		trainX.append(trainDict[lid][0:11])
+		trainY.append(trainDict[lid][11])
+
+	trainX = np.array(trainX)
+	trainY = np.array(trainY)
+
+	c = 90
+	g = 0.2
+
+	clf = SVC(C=c, gamma = g, degree =3)
+	clf.fit(trainX,trainY)
+
+
+	testX = []
+
+	for lid in testDict.keys():
+		testX.append(testDict[lid][0:11])
+
+	testX = np.array(testX)
+
+	predictY = clf.predict(testX)
+	
+	predictStringList = []
+	for i in range(len(predictY)):
+		if predictY[i] == 1:
+			predictStringList.append('Y')
+		else:
+			predictStringList.append('N')
+
+	firstRow = ['Loan_ID','Loan_Status']
+	opFile = open("result.csv", "wb")
+	csvWriter = csv.writer(opFile, delimiter=',')
+	csvWriter.writerow(firstRow)
+	
+	print len(testDict.keys()), len(predictY)
+	
+	for i in range(len(testDict.keys())):
+		writeString = [testDict.keys()[i],predictStringList[i]]
+		csvWriter.writerow(writeString)
+
+
+
+csvFile = open('train.csv')
+trainData = csv.reader(csvFile, delimiter = ',')
+trainDict = getDict(trainData, 1)
+
+train(trainDict)
+
+csvFile = open('test.csv')
+testData = csv.reader(csvFile, delimiter = ',')
+testDict = getDict(testData, 0)
+
+test(testDict, trainDict)
